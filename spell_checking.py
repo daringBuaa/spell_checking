@@ -3,6 +3,7 @@ import pandas as pd
 import re
 from sklearn.feature_extraction.text import CountVectorizer
 import os
+import string
 
 if os.path.exists('words.csv'):
     words_df = pd.read_csv('words.csv')
@@ -46,31 +47,75 @@ def output(check_list):
     candidate = check_list[value_list.index(max(value_list))] if len(value_list) else None
     return candidate
 
+
 # 输入待检查单词，若出现在语言词库中则直接输出，否则逐步检查编辑距离1-2的词库
 def correct(word):
-    if word in words_dic.keys():
+    # 输入单词长度小于2则直接返回
+    if len(word) > 1:
+        if word in words_dic.keys():
+            return word
+        # 检查编辑距离为1对应的词库
+        check_list1 = word_edit1(word)
+        # 只需检查词库中存在的词
+        check_list1 = [i for i in check_list1 if i in words_dic.keys()]
+        candidate =output(check_list1)
+        if candidate:
+            return candidate
+        # 检查编辑距离为2的库
+        check_list2 = word_edit2(word)
+        check_list2 = [i for i in check_list2 if i in words_dic.keys()]
+        candidate = output(check_list2)
+        if candidate:
+            return candidate
         return word
-    # 检查编辑距离为1对应的词库
-    check_list1 = word_edit1(word)
-    # 只需检查词库中存在的词
-    check_list1 = [i for i in check_list1 if i in words_dic.keys()]
-    candidate =output(check_list1)
-    if candidate:
-        return candidate
-    # 检查编辑距离为2的库
-    check_list2 = word_edit2(word)
-    check_list2 = [i for i in check_list2 if i in words_dic.keys()]
-    candidate = output(check_list2)
-    if candidate:
-        return candidate
     else:
         return word
 
 
+# 识别句子，双指针解析
+def correct_paragraph(paragraph):
+    """
+    :param paragraph: "i lave paland, you lovl holand"
+    :return: 'i love poland, you love holland'
+    """
+    result = list()
+    i = 0  # 第一个指针在0位置开始遍历
+    length = len(paragraph)
+    while i < length-1:  # i 最大可以取到len-2
+        if paragraph[i] not in string.ascii_letters:  # i指向字母才寻找单词
+
+            result.append(paragraph[i:i+1])
+            i += 1
+            continue
+        j = i+1  # j为第二指针
+        while paragraph[j] in string.ascii_letters and j < length-1:
+            j += 1  # 如果j为最后一位则j+1会超出索引
+        if j != length-1:  # 不是字母且不是最后一个
+            word1 = paragraph[i:j]
+            # 单词拼写检查,并加入结果的列表
+            checked_word = correct(word1)
+            result.append(checked_word)
+            i = j
+        elif paragraph[j] in string.ascii_letters:  # 是字母且是最后一个
+            word2 = paragraph[i:]
+            result.append(correct(word2))
+            break
+        else:  # 不是字母但是最后一个
+            word3 = paragraph[i:j]
+            result.append(correct(word3))
+            result.append(paragraph[j:])
+            break
+    # i=length-1不会进入循环，如果在i=length-1时跳出则需要将最后一位加入
+    if i == length - 1:
+        result.append(paragraph[i:])
+    # 所有单词check完毕，组成句子返回
+    return ''.join(result)
+
 
 if __name__ == '__main__':
     while True:
-        input_word = input("请输入单词：(输入stop结束)")
+        input_word = input("请输入单词/段落：(输入stop结束)")
         if input_word == 'stop':
             break
-        print(correct(input_word))
+        print(correct_paragraph(input_word))
+    # print(correct('i'))
