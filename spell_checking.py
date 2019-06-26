@@ -83,8 +83,9 @@ def correct_paragraph(paragraph):
     length = len(paragraph)
     while i < length-1:  # i 最大可以取到len-2
         if paragraph[i] not in string.ascii_letters:  # i指向字母才寻找单词
-
-            result.append(paragraph[i:i+1])
+            # 判断时候为重复的空格
+            if not result or paragraph[i:i+1] != result[-1]:
+                result.append(paragraph[i:i+1])
             i += 1
             continue
         j = i+1  # j为第二指针
